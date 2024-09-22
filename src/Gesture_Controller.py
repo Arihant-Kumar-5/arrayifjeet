@@ -1,27 +1,14 @@
-# Imports
-
 import cv2
 import mediapipe as mp
 import pyautogui
 import math
-import platform  # Add this import
+import platform
 from enum import IntEnum
 from ctypes import cast, POINTER
-# from comtypes import CLSCTX_ALL
-# from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from google.protobuf.json_format import MessageToDict
-# Conditional import for Windows
-if platform.system() == "Windows":
-    from comtypes import CLSCTX_ALL
-    # from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-else:
-    # Define a placeholder for Linux or other OS
-    CLSCTX_ALL = None  # Placeholder, adjust as needed for Linux
-    # You may need to implement alternative audio handling for Linux
-
 import screen_brightness_control as sbcontrol
-
 pyautogui.FAILSAFE = False
+
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 
@@ -31,7 +18,6 @@ class Gest(IntEnum):
     """
     Enum for mapping all hand gesture to binary number.
     """
-
     FIST = 0
     PINKY = 1
     RING = 2
@@ -42,14 +28,11 @@ class Gest(IntEnum):
     LAST4 = 15
     THUMB = 16    
     PALM = 31
-    
-    # Extra Mappings
     V_GEST = 33
     TWO_FINGER_CLOSED = 34
     PINCH_MAJOR = 35
     PINCH_MINOR = 36
 
-# Multi-handedness Labels
 class HLabel(IntEnum):
     MINOR = 0
     MAJOR = 1
@@ -59,11 +42,8 @@ class HandRecog:
     """
     Convert Mediapipe Landmarks to recognizable Gestures.
     """
-    
     def __init__(self, hand_label):
         """
-        Constructs all the necessary attributes for the HandRecog object.
-
         Parameters
         ----------
             finger : int
@@ -82,7 +62,6 @@ class HandRecog:
             hand_label : int
                 Represents multi-handedness corresponding to Enum 'HLabel'.
         """
-
         self.finger = 0
         self.ori_gesture = Gest.PALM
         self.prev_gesture = Gest.PALM
@@ -96,12 +75,10 @@ class HandRecog:
     def get_signed_dist(self, point):
         """
         returns signed euclidean distance between 'point'.
-
         Parameters
         ----------
         point : list contaning two elements of type list/tuple which represents 
             landmark point.
-        
         Returns
         -------
         float
@@ -117,12 +94,10 @@ class HandRecog:
     def get_dist(self, point):
         """
         returns euclidean distance between 'point'.
-
         Parameters
         ----------
         point : list contaning two elements of type list/tuple which represents 
             landmark point.
-        
         Returns
         -------
         float
@@ -135,25 +110,21 @@ class HandRecog:
     def get_dz(self,point):
         """
         returns absolute difference on z-axis between 'point'.
-
         Parameters
         ----------
         point : list contaning two elements of type list/tuple which represents 
             landmark point.
-        
         Returns
         -------
         float
         """
         return abs(self.hand_result.landmark[point[0]].z - self.hand_result.landmark[point[1]].z)
     
-    # Function to find Gesture Encoding using current finger_state.
     # Finger_state: 1 if finger is open, else 0
     def set_finger_state(self):
         """
         set 'finger' by computing ratio of distance between finger tip 
         , middle knuckle, base knuckle.
-
         Returns
         -------
         None
@@ -178,14 +149,12 @@ class HandRecog:
             if ratio > 0.5 :
                 self.finger = self.finger | 1
     
-
     # Handling Fluctations due to noise
     def get_gesture(self):
         """
         returns int representing gesture corresponding to Enum 'Gest'.
         sets 'frame_count', 'ori_gesture', 'prev_gesture', 
         handles fluctations due to noise.
-        
         Returns
         -------
         int
@@ -299,26 +268,27 @@ class Controller:
     
     def changesystembrightness():
         """sets system brightness based on 'Controller.pinchlv'."""
-        currentBrightnessLv = sbcontrol.get_brightness(display=0)/100.0
-        currentBrightnessLv += Controller.pinchlv/50.0
+        try:
+            currentBrightnessLv = sbcontrol.get_brightness(display=0) / 100.0
+        except Exception as e:
+            print(f"Error getting brightness: {e}")
+            return  # Exit the function if there's an error
+
+        currentBrightnessLv += Controller.pinchlv / 50.0
         if currentBrightnessLv > 1.0:
             currentBrightnessLv = 1.0
         elif currentBrightnessLv < 0.0:
             currentBrightnessLv = 0.0       
-        sbcontrol.fade_brightness(int(100*currentBrightnessLv) , start = sbcontrol.get_brightness(display=0))
+        # Check if the platform is Linux and use lbrightnessctl if so
+        if platform.system() == "Linux":
+            import subprocess
+            subprocess.run(["brightnessctl", "set", f"{int(100 * currentBrightnessLv)}%"])
+        else:
+            sbcontrol.fade_brightness(int(100 * currentBrightnessLv), start=sbcontrol.get_brightness(display=0))
     
     def changesystemvolume():
         """sets system volume based on 'Controller.pinchlv'."""
-        # devices = AudioUtilities.GetSpeakers()
-        # interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        # volume = cast(interface, POINTER(IAudioEndpointVolume))
-        # currentVolumeLv = volume.GetMasterVolumeLevelScalar()
-        # currentVolumeLv += Controller.pinchlv/50.0
-        # if currentVolumeLv > 1.0:
-        #     currentVolumeLv = 1.0
-        # elif currentVolumeLv < 0.0:
-        #     currentVolumeLv = 0.0
-        # volume.SetMasterVolumeLevelScalar(currentVolumeLv, None)
+        # to work on
     
     def scrollVertical():
         """scrolls on screen vertically."""
@@ -334,14 +304,11 @@ class Controller:
         pyautogui.keyUp('shift')
 
     # Locate Hand to get Cursor Position
-    # Stabilize cursor by Dampening
     def get_position(hand_result):
         """
         returns coordinates of current hand position.
-
         Locates hand to get cursor position also stabilize cursor by 
         dampening jerky motion of hand.
-
         Returns
         -------
         tuple(float, float)
@@ -472,11 +439,11 @@ class Controller:
                 Controller.pinchminorflag = True
             Controller.pinch_control(hand_result,Controller.scrollHorizontal, Controller.scrollVertical)
         
-        elif gesture == Gest.PINCH_MAJOR:
-            if Controller.pinchmajorflag == False:
-                Controller.pinch_control_init(hand_result)
-                Controller.pinchmajorflag = True
-            Controller.pinch_control(hand_result,Controller.changesystembrightness, Controller.changesystemvolume)
+        # elif gesture == Gest.PINCH_MAJOR:
+        #     if Controller.pinchmajorflag == False:
+        #         Controller.pinch_control_init(hand_result)
+        #         Controller.pinchmajorflag = True
+        #     Controller.pinch_control(hand_result,Controller.changesystembrightness, Controller.changesystemvolume)
         
 '''
 ----------------------------------------  Main Class  ----------------------------------------
