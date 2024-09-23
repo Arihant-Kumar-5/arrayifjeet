@@ -12,7 +12,6 @@ pyautogui.FAILSAFE = False
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 
-# Gesture Encodings 
 class Gest(IntEnum):
     # Binary Encoded
     """
@@ -37,31 +36,11 @@ class HLabel(IntEnum):
     MINOR = 0
     MAJOR = 1
 
-# Convert Mediapipe Landmarks to recognizable Gestures
 class HandRecog:
     """
     Convert Mediapipe Landmarks to recognizable Gestures.
     """
     def __init__(self, hand_label):
-        """
-        Parameters
-        ----------
-            finger : int
-                Represent gesture corresponding to Enum 'Gest',
-                stores computed gesture for current frame.
-            ori_gesture : int
-                Represent gesture corresponding to Enum 'Gest',
-                stores gesture being used.
-            prev_gesture : int
-                Represent gesture corresponding to Enum 'Gest',
-                stores gesture computed for previous frame.
-            frame_count : int
-                total no. of frames since 'ori_gesture' is updated.
-            hand_result : Object
-                Landmarks obtained from mediapipe.
-            hand_label : int
-                Represents multi-handedness corresponding to Enum 'HLabel'.
-        """
         self.finger = 0
         self.ori_gesture = Gest.PALM
         self.prev_gesture = Gest.PALM
@@ -73,16 +52,6 @@ class HandRecog:
         self.hand_result = hand_result
 
     def get_signed_dist(self, point):
-        """
-        returns signed euclidean distance between 'point'.
-        Parameters
-        ----------
-        point : list contaning two elements of type list/tuple which represents 
-            landmark point.
-        Returns
-        -------
-        float
-        """
         sign = -1
         if self.hand_result.landmark[point[0]].y < self.hand_result.landmark[point[1]].y:
             sign = 1
@@ -92,32 +61,12 @@ class HandRecog:
         return dist*sign
     
     def get_dist(self, point):
-        """
-        returns euclidean distance between 'point'.
-        Parameters
-        ----------
-        point : list contaning two elements of type list/tuple which represents 
-            landmark point.
-        Returns
-        -------
-        float
-        """
         dist = (self.hand_result.landmark[point[0]].x - self.hand_result.landmark[point[1]].x)**2
         dist += (self.hand_result.landmark[point[0]].y - self.hand_result.landmark[point[1]].y)**2
         dist = math.sqrt(dist)
         return dist
     
     def get_dz(self,point):
-        """
-        returns absolute difference on z-axis between 'point'.
-        Parameters
-        ----------
-        point : list contaning two elements of type list/tuple which represents 
-            landmark point.
-        Returns
-        -------
-        float
-        """
         return abs(self.hand_result.landmark[point[0]].z - self.hand_result.landmark[point[1]].z)
     
     # Finger_state: 1 if finger is open, else 0
@@ -471,7 +420,7 @@ class GestureController:
         object representing major hand.
     hr_minor : Object of 'HandRecog'
         object representing minor hand.
-    dom_hand : bool
+    main_hand : bool
         True if right hand is domaniant hand, otherwise False.
         default True.
     """
@@ -481,7 +430,7 @@ class GestureController:
     CAM_WIDTH = None
     hr_major = None # Right Hand by default
     hr_minor = None # Left hand by default
-    dom_hand = True
+    main_hand = True
 
     def __init__(self):
         """Initilaizes attributes."""
@@ -499,7 +448,7 @@ class GestureController:
     def classify_hands(results):
         """
         sets 'hr_major', 'hr_minor' based on classification(left, right) of 
-        hand obtained from mediapipe, uses 'dom_hand' to decide major and
+        hand obtained from mediapipe, uses 'main_hand' to decide major and
         minor hand.
         """
         left , right = None,None
@@ -521,7 +470,7 @@ class GestureController:
         except:
             pass
         
-        if GestureController.dom_hand == True:
+        if GestureController.main_hand == True:
             GestureController.hr_major = right
             GestureController.hr_minor = left
         else :
@@ -578,6 +527,5 @@ class GestureController:
         GestureController.cap.release()
         cv2.destroyAllWindows()
 
-# uncomment to run directly
 gc1 = GestureController()
 gc1.start()
